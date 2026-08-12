@@ -1,0 +1,38 @@
+# Windows 実機検証（第1章）: 著者環境に Windows 機がないため、
+# GitHub Actions の windows-latest（実 Windows Server）でインストール手順を検証する。
+name: windows-verify
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/windows-verify.yml"
+
+jobs:
+  npm-install:
+    runs-on: windows-latest
+    steps:
+      - name: Show Windows version
+        run: |
+          [System.Environment]::OSVersion.Version
+          Get-ComputerInfo -Property OsName, OsVersion | Format-List
+      - name: Install Codex CLI via npm
+        run: npm install -g @openai/codex
+      - name: Verify codex --version
+        run: codex --version
+      - name: Verify codex --help (subcommands present)
+        run: codex --help
+      - name: codex doctor (no auth; informational)
+        continue-on-error: true
+        run: codex doctor
+
+  official-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Install Codex CLI via official installer (install.ps1)
+        run: irm https://chatgpt.com/codex/install.ps1 | iex
+      - name: Verify codex --version
+        continue-on-error: true
+        run: |
+          $env:Path = "$env:USERPROFILE\.codex\bin;$env:LOCALAPPDATA\Programs\codex\bin;$env:Path"
+          codex --version
