@@ -1,0 +1,7 @@
+# ~/.codex/config.toml ― 安全側に倒した既定値の例
+
+# ローカル作業の既定。作業ディレクトリ内の読み書きを許可する
+sandbox_mode = "workspace-write"
+
+# 境界を越える操作はモデルの判断で承認を求めさせる（既定値）
+approval_policy = "on-request"
