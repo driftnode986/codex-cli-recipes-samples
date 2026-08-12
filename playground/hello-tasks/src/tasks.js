@@ -39,3 +39,14 @@ export function removeTask(tasks, id) {
   }
   return tasks.filter((t) => t.id !== id);
 }
+
+export function updateTask(tasks, id, title) {
+  if (!title || title.trim() === "") {
+    throw new Error("task title must not be empty");
+  }
+  const found = tasks.find((t) => t.id === id);
+  if (!found) {
+    throw new Error(`task not found: ${id}`);
+  }
+  return tasks.map((t) => (t.id === id ? { ...t, title: title.trim() } : t));
+}
