@@ -7,3 +7,11 @@ dist/
 
 # Codex CLI のローカル状態はコミットしない（設定サンプルは configs/ に置く）
 .codex/
+
+# 🔴 グローバル gitignore (~/.gitignore_global) が AGENTS.md / CLAUDE.md を
+# 全リポジトリで除外しているため、否定パターンで打ち消す。
+# agents-md/ は書籍第3章・第9章のテンプレートそのものなので、これが無いと
+# サンプルが公開されない（git add で無言スキップされる）。
+!agents-md/**/AGENTS.md
+!agents-md/**/CLAUDE.md
+!playground/**/AGENTS.md
