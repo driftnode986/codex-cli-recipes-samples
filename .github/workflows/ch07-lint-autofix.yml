@@ -1,0 +1,50 @@
+name: lint-autofix
+
+on:
+  workflow_dispatch:
+
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      # バージョンを固定する。latest だと更新のたびに挙動が変わりうる
+      - name: Codex CLI を導入
+        run: npm install -g @openai/codex@0.147.0
+
+      - name: sandbox を動作可能にする
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      # Codex はジョブの最後に置く。キーもこのステップにだけ渡す
+      - name: lint の指摘を修正
+        env:
+          CODEX_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          npm run lint > lint.log 2>&1 || true
+          timeout 600 codex exec \
+            --sandbox workspace-write \
+            "lint.log の指摘を修正してください。指摘のない箇所は変更しないでください。" \
+            < /dev/null
+
+      - name: 修正結果を検証
+        run: npm run lint
+
+      - name: PR を作成
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/lint-autofix
+          title: "chore: lint の指摘を自動修正"
+          commit-message: "chore: lint の指摘を自動修正"
