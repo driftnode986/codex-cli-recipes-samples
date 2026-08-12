@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addTask, completeTask } from "../src/tasks.js";
+import { addTask, completeTask, removeTask } from "../src/tasks.js";
 
 test("addTask appends a new task with incremented id", () => {
   const tasks = addTask([], "write chapter 1");
@@ -13,6 +13,17 @@ test("addTask rejects empty titles", () => {
   assert.throws(() => addTask([], "  "), /must not be empty/);
 });
 
+test("addTask uses an unused id after a task is removed", () => {
+  const initial = addTask(addTask([], "first"), "second");
+  const afterRemoval = removeTask(initial, 1);
+  const updated = addTask(afterRemoval, "third");
+
+  assert.deepEqual(updated, [
+    { id: 2, title: "second", done: false },
+    { id: 3, title: "third", done: false },
+  ]);
+});
+
 test("completeTask marks the matching task as done", () => {
   const tasks = addTask([], "review PR");
   const updated = completeTask(tasks, 1);
@@ -21,4 +32,23 @@ test("completeTask marks the matching task as done", () => {
 
 test("completeTask throws for unknown id", () => {
   assert.throws(() => completeTask([], 99), /task not found/);
+});
+
+test("removeTask removes the matching task without mutating the input", () => {
+  const tasks = [
+    { id: 1, title: "keep", done: false },
+    { id: 2, title: "remove", done: false },
+  ];
+
+  const updated = removeTask(tasks, 2);
+
+  assert.deepEqual(updated, [{ id: 1, title: "keep", done: false }]);
+  assert.deepEqual(tasks, [
+    { id: 1, title: "keep", done: false },
+    { id: 2, title: "remove", done: false },
+  ]);
+});
+
+test("removeTask throws for unknown id", () => {
+  assert.throws(() => removeTask([], 99), /task not found: 99/);
 });

@@ -31,3 +31,11 @@ export function completeTask(tasks, id) {
   }
   return tasks.map((t) => (t.id === id ? { ...t, done: true } : t));
 }
+
+export function removeTask(tasks, id) {
+  const found = tasks.find((t) => t.id === id);
+  if (!found) {
+    throw new Error(`task not found: ${id}`);
+  }
+  return tasks.filter((t) => t.id !== id);
+}
