@@ -1,0 +1,9 @@
+# ~/.codex/config.toml ― 最初に入れておく最小構成の例
+
+# 既定モデルと推論の深さ（/model で対話的に変えた結果を固定したいとき）
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+
+# 信頼済みプロジェクト（TUI の trust 確認に応答すると自動で追記される）
+[projects."/Users/makino/work/hello-tasks"]
+trust_level = "trusted"
