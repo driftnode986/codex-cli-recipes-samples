@@ -1,0 +1,9 @@
+.DS_Store
+node_modules/
+dist/
+*.log
+.env
+.env.*
+
+# Codex CLI のローカル状態はコミットしない（設定サンプルは configs/ に置く）
+.codex/
