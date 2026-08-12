@@ -1,0 +1,12 @@
+{
+  "name": "hello-tasks",
+  "version": "1.0.0",
+  "description": "A minimal CLI task manager used as the Codex CLI playground project",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
