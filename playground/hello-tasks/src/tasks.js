@@ -2,9 +2,9 @@ import { readFile, writeFile } from "node:fs/promises";
 
 const DB_PATH = new URL("../tasks.json", import.meta.url);
 
-export async function loadTasks() {
+export async function loadTasks(filePath = DB_PATH) {
   try {
-    const raw = await readFile(DB_PATH, "utf-8");
+    const raw = await readFile(filePath, "utf-8");
     return JSON.parse(raw);
   } catch (err) {
     if (err.code === "ENOENT") return [];
@@ -12,8 +12,8 @@ export async function loadTasks() {
   }
 }
 
-export async function saveTasks(tasks) {
-  await writeFile(DB_PATH, JSON.stringify(tasks, null, 2) + "\n");
+export async function saveTasks(tasks, filePath = DB_PATH) {
+  await writeFile(filePath, JSON.stringify(tasks, null, 2) + "\n");
 }
 
 export function addTask(tasks, title) {

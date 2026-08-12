@@ -1,6 +1,55 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addTask, completeTask, removeTask, updateTask } from "../src/tasks.js";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  addTask,
+  completeTask,
+  loadTasks,
+  removeTask,
+  saveTasks,
+  updateTask,
+} from "../src/tasks.js";
+
+test("loadTasks returns saved tasks from a temporary file", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "hello-tasks-"));
+  const filePath = join(directory, "tasks.json");
+  const tasks = [{ id: 1, title: "write tests", done: false }];
+  t.after(() => rm(directory, { recursive: true, force: true }));
+
+  await saveTasks(tasks, filePath);
+
+  assert.deepEqual(await loadTasks(filePath), tasks);
+});
+
+test("loadTasks returns an empty list when a temporary file does not exist", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "hello-tasks-"));
+  const filePath = join(directory, "missing-tasks.json");
+  t.after(() => rm(directory, { recursive: true, force: true }));
+
+  assert.deepEqual(await loadTasks(filePath), []);
+});
+
+test("loadTasks rethrows parsing errors from a temporary file", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "hello-tasks-"));
+  const filePath = join(directory, "tasks.json");
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await writeFile(filePath, "not JSON");
+
+  await assert.rejects(loadTasks(filePath), SyntaxError);
+});
+
+test("saveTasks writes formatted JSON to a temporary file", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "hello-tasks-"));
+  const filePath = join(directory, "tasks.json");
+  const tasks = [{ id: 1, title: "write tests", done: true }];
+  t.after(() => rm(directory, { recursive: true, force: true }));
+
+  await saveTasks(tasks, filePath);
+
+  assert.equal(await readFile(filePath, "utf-8"), `${JSON.stringify(tasks, null, 2)}\n`);
+});
 
 test("addTask appends a new task with incremented id", () => {
   const tasks = addTask([], "write chapter 1");
