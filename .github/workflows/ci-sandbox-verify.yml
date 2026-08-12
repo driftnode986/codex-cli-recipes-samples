@@ -1,0 +1,66 @@
+# CI 上の sandbox 境界検証（第7章）: 開発機（macOS / Seatbelt）で確認した
+# 「workspace-write でも .git/ は保護される」が、CI（Linux / bubblewrap）でも
+# 同じかを実測する。モデルを呼ばない `codex sandbox` を使うため API キー不要。
+name: ci-sandbox-verify
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/ci-sandbox-verify.yml"
+
+jobs:
+  sandbox-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Codex CLI
+        run: npm install -g @openai/codex
+
+      - name: Version
+        run: codex --version
+
+      # 1) 既定（read-only）でワークスペースへの書き込みが拒否されるか
+      - name: read-only blocks workspace write
+        continue-on-error: true
+        run: |
+          set -x
+          codex sandbox -- sh -c 'echo hello > ro-test.txt'
+          echo "exit=$?"
+          ls -la ro-test.txt || echo "ro-test.txt not created"
+
+      # 2) workspace-write でワークスペースには書けるか
+      - name: workspace-write allows workspace write
+        run: |
+          set -x
+          codex sandbox -c sandbox_mode="workspace-write" -- sh -c 'echo hello > ww-test.txt'
+          cat ww-test.txt
+
+      # 3) 本題: workspace-write で .git/ に書けるか（= git add が通るか）
+      - name: workspace-write and .git protection
+        continue-on-error: true
+        run: |
+          set -x
+          codex sandbox -c sandbox_mode="workspace-write" -- git add ww-test.txt
+          echo "exit=$?"
+          git status --short
+
+      # 4) writable_roots で .git を許可した場合
+      - name: writable_roots allows git add
+        continue-on-error: true
+        run: |
+          set -x
+          codex sandbox -c sandbox_mode="workspace-write" \
+            -c "sandbox_workspace_write.writable_roots=[\"$PWD/.git\"]" \
+            -- git add ww-test.txt
+          echo "exit=$?"
+          git status --short
+
+      # 5) ネットワークが遮断されるか
+      - name: network is blocked under workspace-write
+        continue-on-error: true
+        run: |
+          set -x
+          codex sandbox -c sandbox_mode="workspace-write" -- curl -sS -m 10 https://example.com -o /dev/null
+          echo "exit=$?"
