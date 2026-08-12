@@ -1,6 +1,10 @@
 # CI 上の sandbox 境界検証（第7章）: 開発機（macOS / Seatbelt）で確認した
 # 「workspace-write でも .git/ は保護される」が、CI（Linux / bubblewrap）でも
 # 同じかを実測する。モデルを呼ばない `codex sandbox` を使うため API キー不要。
+#
+# 実測結果（2026-08-13）: GitHub Actions の ubuntu-latest では bwrap が
+# 「loopback: Failed RTM_NEWADDR: Operation not permitted」で起動できない。
+# 回避策（unshare 権限の付与 / apparmor プロファイル緩和）を併せて検証する。
 name: ci-sandbox-verify
 
 on:
@@ -10,19 +14,51 @@ on:
       - ".github/workflows/ci-sandbox-verify.yml"
 
 jobs:
-  sandbox-boundary:
+  # ジョブ1: 素の ubuntu-latest で sandbox が起動するか
+  bare-runner:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
       - name: Install Codex CLI
         run: npm install -g @openai/codex
-
       - name: Version
         run: codex --version
 
-      # 1) 既定（read-only）でワークスペースへの書き込みが拒否されるか
-      - name: read-only blocks workspace write
+      - name: Runner の unshare / apparmor 設定を記録
+        run: |
+          echo "kernel.unprivileged_userns_clone=$(sysctl -n kernel.unprivileged_userns_clone 2>/dev/null || echo 'n/a')"
+          echo "apparmor_restrict_unprivileged_userns=$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo 'n/a')"
+          echo "userns unshare test:"
+          unshare --user --map-root-user true && echo "unshare OK" || echo "unshare FAILED"
+
+      - name: read-only（既定）で書き込みを試す
+        continue-on-error: true
+        run: |
+          set -x
+          codex sandbox -- sh -c 'echo hello > ro-test.txt'
+          echo "exit=$?"
+
+      - name: workspace-write で書き込みを試す
+        continue-on-error: true
+        run: |
+          set -x
+          codex sandbox -c sandbox_mode="workspace-write" -- sh -c 'echo hello > ww-test.txt'
+          echo "exit=$?"
+
+  # ジョブ2: apparmor の unprivileged userns 制限を外して再検証
+  relaxed-runner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Codex CLI
+        run: npm install -g @openai/codex
+
+      - name: apparmor の userns 制限を解除
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+
+      - name: read-only（既定）で書き込みが拒否されるか
         continue-on-error: true
         run: |
           set -x
@@ -30,15 +66,16 @@ jobs:
           echo "exit=$?"
           ls -la ro-test.txt || echo "ro-test.txt not created"
 
-      # 2) workspace-write でワークスペースには書けるか
-      - name: workspace-write allows workspace write
+      - name: workspace-write でワークスペースに書けるか
+        continue-on-error: true
         run: |
           set -x
           codex sandbox -c sandbox_mode="workspace-write" -- sh -c 'echo hello > ww-test.txt'
-          cat ww-test.txt
+          echo "exit=$?"
+          cat ww-test.txt || echo "ww-test.txt not created"
 
-      # 3) 本題: workspace-write で .git/ に書けるか（= git add が通るか）
-      - name: workspace-write and .git protection
+      # 本題: workspace-write で .git/ に書けるか（= git add が通るか）
+      - name: workspace-write で git add が通るか
         continue-on-error: true
         run: |
           set -x
@@ -46,8 +83,7 @@ jobs:
           echo "exit=$?"
           git status --short
 
-      # 4) writable_roots で .git を許可した場合
-      - name: writable_roots allows git add
+      - name: writable_roots で .git を許可した場合
         continue-on-error: true
         run: |
           set -x
@@ -57,8 +93,7 @@ jobs:
           echo "exit=$?"
           git status --short
 
-      # 5) ネットワークが遮断されるか
-      - name: network is blocked under workspace-write
+      - name: ネットワークが遮断されるか
         continue-on-error: true
         run: |
           set -x
