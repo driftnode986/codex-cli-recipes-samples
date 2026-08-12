@@ -1,0 +1,11 @@
+# ~/.codex/config.toml ― AGENTS.md（プロジェクト説明書）まわりの設定例
+#
+# 第3章で扱う2つのキー。どちらも --strict-config で実在を確認している（3-19）。
+
+# 読み込む AGENTS.md の合計サイズ上限（既定 32 KiB = 32768 バイト）。
+# 超過分はエラーも警告もなく打ち切られるため、上げる前に内容を削ることを優先する。
+project_doc_max_bytes = 32768
+
+# AGENTS.md が見つからない場合に探す代替ファイル名。
+# すでに CLAUDE.md を運用しているリポジトリに Codex を導入するときに使う。
+project_doc_fallback_filenames = ["CLAUDE.md"]
